@@ -13,6 +13,8 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Repository\UserRepository;
 use App\State\UserPasswordHasher;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -76,6 +78,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     #[Groups(['user:read', 'user:create', 'user:update'])]
     private ?\DateTimeInterface $lastConnection = null;
+
+    /**
+     * @var Collection<int, League>
+     */
+    #[ORM\ManyToMany(targetEntity: League::class, mappedBy: 'users')]
+    #[Groups(['user:read', 'user:update'])]
+    private Collection $leaguesFav;
+
+    public function __construct()
+    {
+        $this->leaguesFav = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -196,6 +210,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLastConnection(\DateTimeInterface $lastConnection): static
     {
         $this->lastConnection = $lastConnection;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, League>
+     */
+    public function getLeaguesFav(): Collection
+    {
+        return $this->leaguesFav;
+    }
+
+    public function addLeaguesFav(League $leaguesFav): static
+    {
+        if (!$this->leaguesFav->contains($leaguesFav)) {
+            $this->leaguesFav->add($leaguesFav);
+            $leaguesFav->addUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLeaguesFav(League $leaguesFav): static
+    {
+        if ($this->leaguesFav->removeElement($leaguesFav)) {
+            $leaguesFav->removeUser($this);
+        }
 
         return $this;
     }
