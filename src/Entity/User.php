@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
@@ -37,6 +38,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiFilter(
     SearchFilter::class,
     properties: ['email' => 'exact']
+)]
+#[ApiFilter(
+    OrderFilter::class,
+    properties: ['coins' => 'DESC']
 )]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -86,9 +91,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:update'])]
     private Collection $leaguesFav;
 
+    /**
+     * @var Collection<int, Bet>
+     */
+    #[ORM\OneToMany(targetEntity: Bet::class, mappedBy: 'user', orphanRemoval: true)]
+    #[Groups(['user:read'])]
+    private Collection $bets;
+
     public function __construct()
     {
         $this->leaguesFav = new ArrayCollection();
+        $this->bets = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -236,6 +249,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if ($this->leaguesFav->removeElement($leaguesFav)) {
             $leaguesFav->removeUser($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Bet>
+     */
+    public function getBets(): Collection
+    {
+        return $this->bets;
+    }
+
+    public function addBet(Bet $bet): static
+    {
+        if (!$this->bets->contains($bet)) {
+            $this->bets->add($bet);
+            $bet->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBet(Bet $bet): static
+    {
+        if ($this->bets->removeElement($bet)) {
+            // set the owning side to null (unless already changed)
+            if ($bet->getUser() === $this) {
+                $bet->setUser(null);
+            }
         }
 
         return $this;
